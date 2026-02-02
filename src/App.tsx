@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import {
   deleteTodo,
@@ -24,7 +24,7 @@ export const App: React.FC = () => {
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
 
   const [processingIds, setProcessingIds] = useState<number[]>([]);
-  const [focusTrigger, setFocusTrigger] = useState(0);
+  const newTodoRef = useRef<HTMLInputElement>(null);
 
   const activeTodosCount = todos.filter(todo => !todo.completed).length;
   const completedTodosCount = todos.length - activeTodosCount;
@@ -67,6 +67,10 @@ export const App: React.FC = () => {
       return Promise.reject();
     }
 
+    if (newTodoRef.current) {
+      newTodoRef.current.disabled = true;
+    }
+
     setTempTodo({ title, id: 0, completed: false, userId: USER_ID });
 
     return postTodo(trimmedTitle)
@@ -78,6 +82,11 @@ export const App: React.FC = () => {
         throw new Error();
       })
       .finally(() => {
+        if (newTodoRef.current) {
+          newTodoRef.current.disabled = false;
+          newTodoRef.current.focus();
+        }
+
         setTempTodo(null);
       });
   };
@@ -88,13 +97,13 @@ export const App: React.FC = () => {
     return deleteTodo(id)
       .then(() => {
         setTodos(curr => curr.filter(todo => todo.id !== id));
-        setFocusTrigger(prev => prev + 1);
       })
       .catch(() => {
         showError(ErrorMessage.Delete);
       })
       .finally(() => {
         setProcessingIds(prev => prev.filter(currentId => currentId !== id));
+        newTodoRef.current?.focus();
       });
   };
 
@@ -124,7 +133,7 @@ export const App: React.FC = () => {
         showError(ErrorMessage.Delete);
       }
 
-      setFocusTrigger(prev => prev + 1);
+      newTodoRef.current?.focus();
     });
   };
 
@@ -134,13 +143,9 @@ export const App: React.FC = () => {
     return updateTodo(updatedTodo)
       .then(responseTodo => {
         setTodos(currentTodos =>
-          currentTodos.map(todo => {
-            if (todo.id === updatedTodo.id) {
-              return responseTodo;
-            }
-
-            return todo;
-          }),
+          currentTodos.map(todo =>
+            todo.id === updatedTodo.id ? responseTodo : todo,
+          ),
         );
       })
       .catch(() => {
@@ -195,7 +200,7 @@ export const App: React.FC = () => {
         <NewTodo
           todosCountInfo={[todos.length, activeTodosCount]}
           onAddNewTodo={handleAddNewTodo}
-          focusTrigger={focusTrigger}
+          ref={newTodoRef}
           onToggleTodos={handleToggleTodos}
         />
 
