@@ -1,5 +1,4 @@
 # React Todo App with API (complete)
-
 It is the third part of the React Todo App with API.
 
 Take your code implemented for [Add and Delete](https://github.com/mate-academy/react_todo-app-add-and-delete)
