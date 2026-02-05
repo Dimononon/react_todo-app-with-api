@@ -20,6 +20,8 @@ export const TodoFooter: React.FC<Props> = ({
   const cnFilter = (option: FilterOption) =>
     classNames('filter__link', { selected: selectedFilter === option });
 
+  const filterOptions = Object.values(FilterOption);
+
   return (
     <footer className="todoapp__footer" data-cy="Footer">
       <span className="todo-count" data-cy="TodosCounter">
@@ -29,32 +31,17 @@ export const TodoFooter: React.FC<Props> = ({
       </span>
 
       <nav className="filter" data-cy="Filter">
-        <a
-          href="#/"
-          className={cnFilter(FilterOption.All)}
-          data-cy="FilterLinkAll"
-          onClick={() => onFilterChange(FilterOption.All)}
-        >
-          All
-        </a>
-
-        <a
-          href="#/active"
-          className={cnFilter(FilterOption.Active)}
-          data-cy="FilterLinkActive"
-          onClick={() => onFilterChange(FilterOption.Active)}
-        >
-          Active
-        </a>
-
-        <a
-          href="#/completed"
-          className={cnFilter(FilterOption.Completed)}
-          data-cy="FilterLinkCompleted"
-          onClick={() => onFilterChange(FilterOption.Completed)}
-        >
-          Completed
-        </a>
+        {filterOptions.map(option => (
+          <a
+            key={option}
+            href={`#/${option}`}
+            className={cnFilter(option)}
+            data-cy={`FilterLink${option}`}
+            onClick={() => onFilterChange(option)}
+          >
+            {option}
+          </a>
+        ))}
       </nav>
 
       <button
@@ -62,7 +49,7 @@ export const TodoFooter: React.FC<Props> = ({
         className="todoapp__clear-completed"
         data-cy="ClearCompletedButton"
         onClick={onClearCompleted}
-        disabled={completedTodosCount <= 0}
+        disabled={!completedTodosCount}
       >
         Clear completed
       </button>

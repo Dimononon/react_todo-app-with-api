@@ -1,4 +1,3 @@
-import { NewTodoDTO } from '../types/NewTodoDTO';
 import { Todo } from '../types/Todo';
 import { client } from '../utils/fetchClient';
 
@@ -9,7 +8,7 @@ export const getTodos = () => {
 };
 
 export const postTodo = (title: string) => {
-  const newTodo: NewTodoDTO = {
+  const newTodo: Omit<Todo, 'id'> = {
     title,
     userId: USER_ID,
     completed: false,

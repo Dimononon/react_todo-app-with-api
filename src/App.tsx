@@ -1,6 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useRef, useState } from 'react';
-import classNames from 'classnames';
+/* eslint-disable max-len */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   deleteTodo,
   getTodos,
@@ -14,11 +13,11 @@ import { TodoFooter } from './components/TodoFooter/TodoFooter';
 import { NewTodo } from './components/NewTodo/NewTodo';
 import { FilterOption } from './types/FilterOption';
 import { ErrorMessage } from './types/ErrorMessage';
+import { ErrorNotification } from './components/ErrorNotification/ErrorNotification';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [errorMessage, setErrorMessage] = useState(ErrorMessage.Default);
-  const [hideError, setHideError] = useState(true);
   const [filterOption, setFilterOption] = useState(FilterOption.All);
 
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
@@ -26,20 +25,28 @@ export const App: React.FC = () => {
   const [processingIds, setProcessingIds] = useState<number[]>([]);
   const newTodoRef = useRef<HTMLInputElement>(null);
 
-  const activeTodosCount = todos.filter(todo => !todo.completed).length;
-  const completedTodosCount = todos.length - activeTodosCount;
+  const { activeTodosCount, completedTodosCount } = useMemo(() => {
+    const activeCount = todos.filter(todo => !todo.completed).length;
 
-  let timerId = 0;
+    return {
+      activeTodosCount: activeCount,
+      completedTodosCount: todos.length - activeCount,
+    };
+  }, [todos]);
 
-  const showError = (error: ErrorMessage) => {
-    clearTimeout(timerId);
-    setErrorMessage(error);
-    setHideError(false);
-    timerId = window.setTimeout(() => setHideError(true), 3000);
+  const isFooterVisible = useMemo(
+    () => todos.length || tempTodo,
+    [todos, tempTodo],
+  );
+
+  const handleCloseError = () => {
+    setErrorMessage(ErrorMessage.Default);
   };
 
-  const filteredTodos = () => {
+  const filteredTodos = useMemo(() => {
     switch (filterOption) {
+      case FilterOption.All:
+        return todos;
       case FilterOption.Active:
         return todos.filter(todo => !todo.completed);
       case FilterOption.Completed:
@@ -47,14 +54,13 @@ export const App: React.FC = () => {
       default:
         return todos;
     }
-  };
+  }, [todos, filterOption]);
 
   useEffect(() => {
-    setHideError(true);
     getTodos()
       .then(setTodos)
       .catch(() => {
-        showError(ErrorMessage.Load);
+        setErrorMessage(ErrorMessage.Load);
       });
   }, []);
 
@@ -62,7 +68,7 @@ export const App: React.FC = () => {
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle.length) {
-      showError(ErrorMessage.TitleEmpty);
+      setErrorMessage(ErrorMessage.TitleEmpty);
 
       return Promise.reject();
     }
@@ -76,9 +82,11 @@ export const App: React.FC = () => {
     return postTodo(trimmedTitle)
       .then(newTodo => {
         setTodos(currentTodos => [...currentTodos, newTodo]);
+        setTempTodo(null);
       })
       .catch(() => {
-        showError(ErrorMessage.Add);
+        setErrorMessage(ErrorMessage.Add);
+        setTempTodo(null);
         throw new Error();
       })
       .finally(() => {
@@ -86,8 +94,6 @@ export const App: React.FC = () => {
           newTodoRef.current.disabled = false;
           newTodoRef.current.focus();
         }
-
-        setTempTodo(null);
       });
   };
 
@@ -99,7 +105,7 @@ export const App: React.FC = () => {
         setTodos(curr => curr.filter(todo => todo.id !== id));
       })
       .catch(() => {
-        showError(ErrorMessage.Delete);
+        setErrorMessage(ErrorMessage.Delete);
       })
       .finally(() => {
         setProcessingIds(prev => prev.filter(currentId => currentId !== id));
@@ -130,7 +136,7 @@ export const App: React.FC = () => {
 
     Promise.all(promises).then(results => {
       if (results.includes(false)) {
-        showError(ErrorMessage.Delete);
+        setErrorMessage(ErrorMessage.Delete);
       }
 
       newTodoRef.current?.focus();
@@ -149,7 +155,7 @@ export const App: React.FC = () => {
         );
       })
       .catch(() => {
-        showError(ErrorMessage.Update);
+        setErrorMessage(ErrorMessage.Update);
         throw new Error();
       })
       .finally(() => {
@@ -187,7 +193,7 @@ export const App: React.FC = () => {
 
     Promise.all(promises).then(results => {
       if (results.includes(false)) {
-        showError(ErrorMessage.Update);
+        setErrorMessage(ErrorMessage.Update);
       }
     });
   };
@@ -204,16 +210,16 @@ export const App: React.FC = () => {
           onToggleTodos={handleToggleTodos}
         />
 
-        {todos.length > 0 && (
+        {Boolean(todos.length) && (
           <TodoList
-            todos={filteredTodos()}
+            todos={filteredTodos}
             tempTodo={tempTodo}
             onTodoDelete={handleDeleteTodo}
             onTodoUpdate={handleUpdateTodo}
             processingIds={processingIds}
           />
         )}
-        {(todos.length > 0 || tempTodo) && (
+        {isFooterVisible && (
           <TodoFooter
             activeTodosCount={activeTodosCount}
             completedTodosCount={completedTodosCount}
@@ -223,22 +229,7 @@ export const App: React.FC = () => {
           />
         )}
       </div>
-
-      <div
-        data-cy="ErrorNotification"
-        className={classNames(
-          'notification is-danger is-light has-text-weight-normal',
-          { hidden: hideError },
-        )}
-      >
-        <button
-          data-cy="HideErrorButton"
-          type="button"
-          className="delete"
-          onClick={() => setHideError(true)}
-        />
-        {errorMessage}
-      </div>
+      <ErrorNotification message={errorMessage} onClose={handleCloseError} />
     </div>
   );
 };
